@@ -81,12 +81,12 @@ def get_assignments(icao, max_jobs = 100):
 
     # Sort city pairs by total value, take the top city pairs.
     dict_items = list(cp.items())
-    sorted_dict_items = sorted(dict_items, key=lambda x: x[1].total_value, reverse=True)
+    sorted_dict_items = sorted(dict_items, key=lambda x: x[1].dollars_per_nm, reverse=True)
     cp = dict(sorted_dict_items[:min(len(sorted_dict_items), max_jobs)])
 
     # Print each result
     for city_pair in cp.values():
-        print(f'{city_pair.origin}-{city_pair.destination}\t${city_pair.total_value}\t{city_pair.total_jobs} jobs\t{city_pair.pax} pax\t{city_pair.cargo} kg\t{city_pair.vips} VIPs')
+        print(f'{city_pair.origin}-{city_pair.destination}\t${city_pair.total_value}\t{city_pair.range} nm\t${city_pair.dollars_per_nm}/nm\t{city_pair.total_jobs} jobs\t{city_pair.pax} pax\t{city_pair.cargo} kg\t{city_pair.vips} VIPs')
     
     return cp
 

@@ -1,3 +1,5 @@
+from range import find_range
+
 class CityPair:
     '''
     A City Pair object summarizes all the jobs between two cities.
@@ -6,6 +8,7 @@ class CityPair:
     def __init__(self, origin, destination):
         self.origin = origin
         self.destination = destination
+        self.range = find_range(self.origin, self.destination)
 
         # Cargo jobs
         self.cargo = 0 # total cargo in kg
@@ -25,10 +28,13 @@ class CityPair:
         # Totals
         self.total_jobs = 0 # number of jobs in total
         self.total_value = 0 # sum of all assignments going between the city pair.
+        self.dollars_per_nm = 0
 
     def update_totals(self):
         self.total_jobs = self.cargo_jobs + self.pax_jobs + self.vip_jobs
         self.total_value = self.cargo_value + self.pax_value + self.vip_value
+        if self.range:
+            self.dollars_per_nm = int(self.total_value / self.range)
     
     def add_cargo(self, weight, pay):
         '''

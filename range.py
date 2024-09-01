@@ -1,14 +1,14 @@
-import pickle
-from classes import *
-from math import sin, cos, sqrt, atan2, radians
-
-with open('apt.pkl', 'rb') as f:
-    apt = pickle.load(f)
-
 def find_range(ICAO1, ICAO2):
     """
     Returns the range in nautical miles between two airports given their ICAO codes.
     """
+    import pickle
+    from classes import Airport
+    from math import sin, cos, sqrt, atan2, radians
+
+    with open('apt.pkl', 'rb') as f:
+        apt = pickle.load(f)
+
     if ICAO1 not in apt or ICAO2 not in apt:
         return False
 
