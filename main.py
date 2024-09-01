@@ -11,7 +11,6 @@ from classes import *
 
 fse = requests.Session()
 
-
 def get_assignments(icao, max_jobs = 100):
     """
     Returns FSE assignments from an airport based on icao code.

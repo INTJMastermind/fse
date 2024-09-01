@@ -1,3 +1,5 @@
 /*.xml
 /key.txt
 /__pycache__
+/apt.txt
+/pickle_airports.py
