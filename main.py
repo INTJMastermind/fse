@@ -13,13 +13,14 @@ fse = requests.Session()
 
 class CityPair:
     '''
-    A City Pair object summarizes all the jobs between two cities.
+    A City Pair object holds all the jobs between two cities.
     This includes cargo, passenger (pax), and VIP jobs.
+    It is represented by a tuple of origin and destination ICAOs.
     '''
     def __init__(self, origin, destination):
         self.origin = origin
         self.destination = destination
-        self.range = find_range(self.origin, self.destination)
+        self.length = find_range(self.origin, self.destination)
 
         # Cargo jobs
         self.cargo = 0 # total cargo in kg
@@ -41,11 +42,15 @@ class CityPair:
         self.total_value = 0 # sum of all assignments going between the city pair.
         self.dollars_per_nm = 0
 
+    def __repr__(self):
+        # Tuple containing origin and destination ICAOs.
+        return (self.origin, self.destination)
+
     def update_totals(self):
         self.total_jobs = self.cargo_jobs + self.pax_jobs + self.vip_jobs
         self.total_value = self.cargo_value + self.pax_value + self.vip_value
-        if self.range:
-            self.dollars_per_nm = int(self.total_value / self.range)
+        if self.length:
+            self.dollars_per_nm = int(self.total_value / self.length)
     
     def add_cargo(self, weight, pay):
         '''
@@ -77,36 +82,35 @@ class CityPair:
 
 class Route():
     """
-    A route is generated between two or more airports in succession.
+    A Route object contains a list of CityPair objects, representing
+    the airports traveled in sequence.
     For route optimization, we want to track:
-    - List of airports visited
-    - Does the route loop back on itself?
+    - A list of city pairs visited
     - Total value of all jobs along the route.
     - Total length of the route.
     - Average dollars per mile along the route.
     """
-    def __init__(self, icao_1, icao_2, pay):
-        self.route = [icao_1, icao_2]
-        self.value = pay
-        self.length = 100
-        self.num_stops = 1
-        self.dollars_per_mile = self.pay / self.length
+    def __init__(self, city_pairs):
+        # List of CityPair objects making up the route
+        self.cps = city_pairs
 
-    def _update(self):
-        # Re-calculates the number of stops and dollars per mile.
-        self.num_stops = len(self.route) - 1        
-        self.dollars_per_mile = self.pay / self.length
+        self.num_stops = len(self.cps)
 
-    def add_leg(self, icao_next, pay, length = 100):
-        self.route.append(icao_next)
-        self.value += pay
-        self.length += length
-        self._update()
+        # Total value of jobs along the route
+        self.value = sum([cp.total_value for cp in self.cps])
 
-    def contains_loop(self):
-        # Returns True if the route has a duplicate
-        return len(self.route) != len(set(self.route))
-    
+        # Total length of the jobs along the route.
+        self.length = sum([cp.length for cp in self.cps])
+        
+        # Total efficiency as $/nm.
+        self.dollars_per_nm = self.value / self.length
+
+    def __repr__(self):
+        # CityPair object is represented by a tuple of origin and destination ICAOs.
+        # A route is represented as a list of CityPair tuples.
+        return [repr(cp) for cp in self.cps]
+
+        
 class Airport():
     def __init__(self, icao = str, name = str, lat = float, long = float, alt = int, rwy_length = int):
         self.icao = icao
@@ -229,7 +233,7 @@ def get_assignments(icao, max_jobs = 10):
 
     # Print each result
     for city_pair in cp.values():
-        print(f'{city_pair.origin}-{city_pair.destination}\t${city_pair.total_value}\t{city_pair.range} nm\t${city_pair.dollars_per_nm}/nm\t{city_pair.total_jobs} jobs\t{city_pair.pax} pax\t{city_pair.cargo} kg\t{city_pair.vips} VIPs')
+        print(f'{city_pair.origin}-{city_pair.destination}\t${city_pair.total_value}\t{city_pair.length} nm\t${city_pair.dollars_per_nm}/nm\t{city_pair.total_jobs} jobs\t{city_pair.pax} pax\t{city_pair.cargo} kg\t{city_pair.vips} VIPs')
     
     return cp
 
