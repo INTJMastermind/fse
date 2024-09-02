@@ -1,6 +1,6 @@
 USE_LOCAL = True # Download a local copy to save on key requests
-NUM_JOBS = 20   # To optimize performance, limit the amount of destinations we look for.
-NUM_ROUTES = 5  # To optimize performance, limit the number of routes.
+NUM_JOBS = 20   # To optimize performance, limit the amount of destinations we look for per airport.
+NUM_ROUTES = 5  # To optimize performance, limit the number of routes searched. After each iteration, we'll prune down to the top X most profitable routes
 
 URL = 'https://server.fseconomy.net/data'
 
