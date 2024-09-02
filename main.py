@@ -6,6 +6,7 @@ with open('key.txt') as f:
 
 import requests
 import os
+import pickle
 from bs4 import BeautifulSoup
 from math import sin, cos, sqrt, atan2, radians
 
@@ -41,10 +42,6 @@ class CityPair:
         self.total_jobs = 0 # number of jobs in total
         self.total_value = 0 # sum of all assignments going between the city pair.
         self.dollars_per_nm = 0
-
-    def __repr__(self):
-        # Tuple containing origin and destination ICAOs.
-        return (self.origin, self.destination)
 
     def update_totals(self):
         self.total_jobs = self.cargo_jobs + self.pax_jobs + self.vip_jobs
@@ -108,12 +105,7 @@ class Route():
         # Total efficiency as $/nm.
         self.dollars_per_nm = self.value / self.length
 
-    def __repr__(self):
-        # CityPair object is represented by a tuple of origin and destination ICAOs.
-        # A route is represented as a list of CityPair tuples.
-        return [repr(cp) for cp in self.cps]
 
-        
 class Airport():
     def __init__(self, icao = str, name = str, lat = float, long = float, alt = int, rwy_length = int):
         self.icao = icao
@@ -129,9 +121,26 @@ def load_apt(filename = 'apt.pkl'):
     Loads the apt.pkl file, which contains a dictionary with key being the ICAO code, and 
     value containing an Airport object.
     """
-    import pickle
-    with open('apt.pkl', 'rb') as f:
+    with open(filename, 'rb') as f:
         return pickle.load(f)
+    
+def load_apt_csv(filename = 'icaodata.csv', outname = 'icaodata.pkl'):
+    with open(filename) as f:
+        lines = f.readlines()
+
+    apt = dict()
+    for line in lines:
+        data = line.split(',')
+        icao = data[0]
+        lat = float(data[1])
+        long = float(data[2])
+        alt = int(data[4])
+        name = data[5]
+
+        apt[data[0]] = Airport(icao, name, lat, long, alt, 0)
+
+    with open(outname, 'wb') as f:
+        pickle.dump(apt, f)
 
 
 def find_range(ICAO1, ICAO2):
@@ -160,7 +169,7 @@ def find_range(ICAO1, ICAO2):
     return int(R * c * NM_per_KM)
 
 
-def get_assignments(icao, max_jobs = 10):
+def get_assignments(icao, max_jobs):
     """
     Gets FSE assignments from an airport based on icao code.
     Inputs:
@@ -285,7 +294,11 @@ def main(start_icao, max_jobs, max_routes, num_steps):
     
     # Load the apt dictionary, used for range calculations.
     global apt
-    apt = load_apt()
+
+    if not os.path.exists('icaodata.pkl'):
+        load_apt_csv()
+    
+    apt = load_apt('icaodata.pkl')
 
     # Get the CityPairs starting from the first airport
     cps = get_assignments(start_icao, max_jobs)
@@ -307,4 +320,4 @@ def main(start_icao, max_jobs, max_routes, num_steps):
 
     
 if __name__ == '__main__':
-    main('KVNY', 100, 5, 3)
+    main('NZQN', 100, 5, 3)
