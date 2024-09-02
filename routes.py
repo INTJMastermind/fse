@@ -1,4 +1,7 @@
 USE_LOCAL = True # Download a local copy to save on key requests
+NUM_JOBS = 20   # To optimize performance, limit the amount of destinations we look for.
+NUM_ROUTES = 5  # To optimize performance, limit the number of routes.
+
 URL = 'https://server.fseconomy.net/data'
 
 with open('key.txt') as f:
@@ -22,6 +25,7 @@ class CityPair:
         self.origin = origin
         self.destination = destination
         self.length = find_range(self.origin, self.destination)
+        self.leg = (self.origin, self.destination)
 
         # Cargo jobs
         self.cargo = 0 # total cargo in kg
@@ -94,7 +98,7 @@ class Route():
         else:
             self.cps = [city_pairs]
 
-        self.num_stops = len(self.cps)
+        self.legs = {cp.leg for cp in self.cps}
 
         # Total value of jobs along the route
         self.value = sum([cp.total_value for cp in self.cps])
@@ -116,9 +120,9 @@ class Airport():
         self.rwy_length = rwy_length
 
 
-def load_apt(filename = 'apt.pkl'):
+def load_apt(filename = 'icaodata.pkl'):
     """
-    Loads the apt.pkl file, which contains a dictionary with key being the ICAO code, and 
+    Loads the icaodata.pkl file, which contains a dictionary with key being the ICAO code, and 
     value containing an Airport object.
     """
     with open(filename, 'rb') as f:
@@ -248,7 +252,8 @@ def print_city_pair(city_pair):
 def print_route(route):
     for cp in route.cps:
         print_city_pair(cp)
-    print(f'ROUTE TOTAL:\t${route.value}\t{route.length} nm\t${int(route.dollars_per_nm)}/nm\n')
+    print('-'*80)
+    print(f'{len(route.legs)} LEG TOTAL:\t${route.value}\t{route.length} nm\t${int(route.dollars_per_nm)}/nm\n')
 
 
 def advance_route(routes, max_jobs, max_routes, step, num_steps):
@@ -264,13 +269,15 @@ def advance_route(routes, max_jobs, max_routes, step, num_steps):
         # 2. Make new routes from the old route.
         for cp in cps:
             # Avoid duplicating the same leg twice in the same route.
-            if cp not in old_route.cps:
+            if cp.leg in old_route.legs:
+                continue
+            elif not ALLOW_REVERSE and cp.leg[::-1] in old_route.legs:
+                continue
+            else:
                 # Make a copy to avoid changing the old route.
                 new_cps = old_route.cps.copy()
                 new_cps.append(cp)
                 new_routes.append(Route(new_cps))
-            else:
-                pass
 
     # 3. Sort new routes by $/nm:
     new_routes = sort_routes(new_routes, max_routes)
@@ -320,4 +327,12 @@ def main(start_icao, max_jobs, max_routes, num_steps):
 
     
 if __name__ == '__main__':
-    main('NZQN', 100, 5, 3)
+    print('FSE Route Finder')
+    if not os.path.exists('key.txt'):
+        print('ERROR: Please paste your FSE access key into a file "key.txt".')
+        exit()
+    icao = input('Starting airport: ').upper()
+    legs = int(input('Number of Legs: '))
+    rev = input('Allow reverse legs (out-and-back trips)? (Y/N): ')
+    ALLOW_REVERSE = rev.upper().startswith('Y')
+    main(icao, NUM_JOBS, NUM_ROUTES, legs)
