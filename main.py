@@ -50,7 +50,7 @@ class CityPair:
         self.total_jobs = self.cargo_jobs + self.pax_jobs + self.vip_jobs
         self.total_value = self.cargo_value + self.pax_value + self.vip_value
         if self.length:
-            self.dollars_per_nm = int(self.total_value / self.length)
+            self.dollars_per_nm = self.total_value / self.length
     
     def add_cargo(self, weight, pay):
         '''
@@ -92,7 +92,10 @@ class Route():
     """
     def __init__(self, city_pairs):
         # List of CityPair objects making up the route
-        self.cps = city_pairs
+        if type(city_pairs) == list:        
+            self.cps = city_pairs
+        else:
+            self.cps = [city_pairs]
 
         self.num_stops = len(self.cps)
 
@@ -123,7 +126,7 @@ class Airport():
 
 def load_apt(filename = 'apt.pkl'):
     """
-    Loads and returns the apt.pkl file, which contains a dictionary with key being the ICAO code, and 
+    Loads the apt.pkl file, which contains a dictionary with key being the ICAO code, and 
     value containing an Airport object.
     """
     import pickle
@@ -135,9 +138,8 @@ def find_range(ICAO1, ICAO2):
     """
     Returns the range in nautical miles between two airports given their ICAO codes.
     """
-
     if ICAO1 not in apt or ICAO2 not in apt:
-        return False
+        return 100
 
     # Approximate radius of earth in km
     R = 6373.0
@@ -160,13 +162,12 @@ def find_range(ICAO1, ICAO2):
 
 def get_assignments(icao, max_jobs = 10):
     """
-    Returns FSE assignments from an airport based on icao code.
+    Gets FSE assignments from an airport based on icao code.
     Inputs:
     - icao: ICAO code of the airport.
     - max_jobs: limits the number of jobs returned.
     Returns:
-    - A sorted dictionary with key as the city pair in tuple form,
-    and the CityPair object as value.
+    - A sorted list of city pairs based on their $/nm value.
     """
 
     # Used for FSE requests
@@ -204,12 +205,12 @@ def get_assignments(icao, max_jobs = 10):
 
     # Organize city pairs into a dictionary, with the key as a tuple of
     # (origin, destination), and the value as the CityPair object.
-    cp = dict()
+    cps = dict()
     for j in jobs:
         # If the job's city pair doesn't exist in cp, add it.
         ident = (j.Location.text, j.ToIcao.text)
-        if ident not in cp:
-            cp[ident] = CityPair(ident[0], ident[1])
+        if ident not in cps:
+            cps[ident] = CityPair(ident[0], ident[1])
 
         # Extract the amount of passengers / cargo, and the pay from xml tags
         amount = int(j.Amount.text)
@@ -218,30 +219,92 @@ def get_assignments(icao, max_jobs = 10):
         # Update the city pair based on the type of job.
         # Cargo jobs use 'kg's in the UnitType
         if j.UnitType.text == 'kg':
-            cp[ident].add_cargo(amount, pay)
+            cps[ident].add_cargo(amount, pay)
         # VIP jobs are under type 'VIP'
         elif j.Type.text == 'VIP':
-            cp[ident].add_vip(amount, pay)
+            cps[ident].add_vip(amount, pay)
         # Otherwise it's a regular passenger job
         else:
-            cp[ident].add_pax(amount, pay)
+            cps[ident].add_pax(amount, pay)
 
     # Sort city pairs by total value, take the top city pairs.
-    dict_items = list(cp.items())
-    sorted_dict_items = sorted(dict_items, key=lambda x: x[1].dollars_per_nm, reverse=True)
-    cp = dict(sorted_dict_items[:min(len(sorted_dict_items), max_jobs)])
+    sorted_cps = sorted(cps.values(), key=lambda x: x.dollars_per_nm, reverse=True)
+    return sorted_cps[:min(len(sorted_cps), max_jobs)]
 
-    # Print each result
-    for city_pair in cp.values():
-        print(f'{city_pair.origin}-{city_pair.destination}\t${city_pair.total_value}\t{city_pair.length} nm\t${city_pair.dollars_per_nm}/nm\t{city_pair.total_jobs} jobs\t{city_pair.pax} pax\t{city_pair.cargo} kg\t{city_pair.vips} VIPs')
+
+def print_city_pair(city_pair):
+    print(f'{city_pair.origin}-{city_pair.destination}\t${city_pair.total_value}\t{city_pair.length} nm\t${int(city_pair.dollars_per_nm)}/nm\t{city_pair.total_jobs} jobs\t{city_pair.pax} pax\t{city_pair.cargo} kg\t{city_pair.vips} VIPs')
     
-    return cp
+
+def print_route(route):
+    for cp in route.cps:
+        print_city_pair(cp)
+    print(f'ROUTE TOTAL:\t${route.value}\t{route.length} nm\t${int(route.dollars_per_nm)}/nm\n')
 
 
-def main():
+def advance_route(routes, max_jobs, max_routes, step, num_steps):
+    """
+    Iteratively finds the most profitable assignments from the last airport on each route. After each step, the number of routes is pruned back, to prevent exponential growth.
+    """
+    new_routes = []
+    for old_route in routes:
+        # 1. Check the jobs from the end of the route.
+        last_icao = old_route.cps[-1].destination
+        cps = get_assignments(last_icao, max_jobs)
+        
+        # 2. Make new routes from the old route.
+        for cp in cps:
+            # Avoid duplicating the same leg twice in the same route.
+            if cp not in old_route.cps:
+                # Make a copy to avoid changing the old route.
+                new_cps = old_route.cps.copy()
+                new_cps.append(cp)
+                new_routes.append(Route(new_cps))
+            else:
+                pass
+
+    # 3. Sort new routes by $/nm:
+    new_routes = sort_routes(new_routes, max_routes)
+
+    # 5. Iterate
+    step += 1
+    if step < num_steps:
+        new_routes = advance_route(new_routes, max_jobs, max_routes, step, num_steps)
+    
+    return new_routes
+
+def sort_routes(routes, max_routes):
+    # Sort new routes by $/nm:
+    routes = sorted(routes, key=lambda x: x.dollars_per_nm, reverse=True)
+
+    # Return the top few routes.
+    return routes[:min(len(routes), max_routes)]
+
+
+def main(start_icao, max_jobs, max_routes, num_steps):
+    
+    # Load the apt dictionary, used for range calculations.
     global apt
     apt = load_apt()
-    get_assignments('KVNY', 10)
 
+    # Get the CityPairs starting from the first airport
+    cps = get_assignments(start_icao, max_jobs)
+
+    # Create a list of routes. At this point, each route only has one CityPair.
+    routes = [Route(cp) for cp in cps]
+
+    # Sort and filter the routes.
+    routes = sort_routes(routes, max_routes)
+
+    # For multi-step routes, advance the route now.
+    steps = 1
+    if steps < num_steps:
+        routes = advance_route(routes, max_jobs, max_routes, steps, num_steps)
+    
+    # Print the final routes.
+    for route in routes:
+        print_route(route)
+
+    
 if __name__ == '__main__':
-    main()
+    main('KVNY', 100, 5, 3)
