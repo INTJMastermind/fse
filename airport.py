@@ -27,7 +27,7 @@ class CityPair:
     def __init__(self, origin, destination):
         self.origin = origin
         self.destination = destination
-        self.length = find_range(self.origin, self.destination)
+        self.length = self.find_range()
         self.leg = (self.origin, self.destination)
 
         # Cargo jobs
@@ -102,6 +102,32 @@ class CityPair:
         except:
             self.dollars_per_nm = 0
 
+    def find_range(self):
+        """
+        Returns the range in nautical miles between two airports given their ICAO codes.
+        """
+        
+        if self.origin not in apt or self.destination not in apt:
+            return 100
+
+        # Approximate radius of earth in km
+        R = 6373.0
+        # Nautical Miles per KM
+        NM_per_KM = 0.54
+
+        lat1 = radians(apt[self.origin].lat)
+        lon1 = radians(apt[self.origin].long)
+        lat2 = radians(apt[self.destination].lat)
+        lon2 = radians(apt[self.destination].long)
+
+        dlon = lon2 - lon1
+        dlat = lat2 - lat1
+
+        a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
+        c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return int(R * c * NM_per_KM)
+
     def __str__(self):
         return f'{self.origin}-{self.destination}\t${self.total_value}\t{self.length} nm\t${int(self.dollars_per_nm)}/nm\t{self.total_jobs} jobs\t{self.pax} pax\t{self.cargo} kg\t{self.vips} VIPs'
     
@@ -142,32 +168,6 @@ def load_apt(filename = 'icaodata.csv'):
         apt[data[0]] = Airport(icao, name, lat, long)
 
     return apt
-
-def find_range(ICAO1, ICAO2):
-    """
-    Returns the range in nautical miles between two airports given their ICAO codes.
-    """
-    
-    if ICAO1 not in apt or ICAO2 not in apt:
-        return 100
-
-    # Approximate radius of earth in km
-    R = 6373.0
-    # Nautical Miles per KM
-    NM_per_KM = 0.54
-
-    lat1 = radians(apt[ICAO1].lat)
-    lon1 = radians(apt[ICAO1].long)
-    lat2 = radians(apt[ICAO2].lat)
-    lon2 = radians(apt[ICAO2].long)
-
-    dlon = lon2 - lon1
-    dlat = lat2 - lat1
-
-    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
-    c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
-    return int(R * c * NM_per_KM)
 
 
 def get_jobs(icao, max_jobs):
