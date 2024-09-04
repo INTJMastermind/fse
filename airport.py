@@ -50,6 +50,21 @@ class CityPair:
         self.total_value = 0 # sum of all assignments going between the city pair.
         self.dollars_per_nm = 0
 
+    def add_job(self, job):
+        # Extract the amount of passengers / cargo, and the pay from xml tags
+        amount = int(job.Amount.text)
+        pay = int(float(job.Pay.text))
+
+        # Update the city pair based on the type of job.
+        if job.UnitType.text == 'kg': # Cargo jobs use 'kg's in the UnitType
+            self.add_cargo(amount, pay)
+        elif job.Type.text == 'VIP': # VIP jobs are under type 'VIP'
+            self.add_vip(amount, pay)
+        else: # Otherwise it's a regular passenger job
+            self.add_pax(amount, pay)
+        
+        self.update_totals()
+
     def add_cargo(self, weight, value):
         """
         Adds a cargo job. Inputs are the weight in kg and value of the job.
@@ -57,7 +72,6 @@ class CityPair:
         self.cargo += weight
         self.cargo_value += value
         self.cargo_jobs += 1
-        self.update_totals()
 
     def add_pax(self, pax, value):
         """
@@ -66,7 +80,6 @@ class CityPair:
         self.pax += pax
         self.pax_value += value
         self.pax_jobs += 1
-        self.update_totals()
 
     def add_vip(self, vips, value):
         """
@@ -75,7 +88,6 @@ class CityPair:
         self.vips += vips
         self.vip_value += value
         self.vip_jobs += 1
-        self.update_totals()    
 
     def update_totals(self):
         """
@@ -224,25 +236,13 @@ def get_jobs(icao, max_jobs):
     cps = dict()
 
     for j in jobs:
-        # If the job's city pair doesn't exist in cp, add it.
+        # If the job's city pair doesn't exist in cps, create a new CityPair object.
         ident = (j.Location.text, j.ToIcao.text)
         if ident not in cps:
             cps[ident] = CityPair(ident[0], ident[1])
 
-        # Extract the amount of passengers / cargo, and the pay from xml tags
-        amount = int(j.Amount.text)
-        pay = int(float(j.Pay.text))
+        cps[ident].add_job(j)
 
-        # Update the city pair based on the type of job.
-        # Cargo jobs use 'kg's in the UnitType
-        if j.UnitType.text == 'kg':
-            cps[ident].add_cargo(amount, pay)
-        # VIP jobs are under type 'VIP'
-        elif j.Type.text == 'VIP':
-            cps[ident].add_vip(amount, pay)
-        # Otherwise it's a regular passenger job
-        else:
-            cps[ident].add_pax(amount, pay)
 
     # Sort city pairs by total value, take the top city pairs.
     sorted_cps = sorted(cps.values(), key=lambda x: x.dollars_per_nm, reverse=True)
@@ -261,9 +261,15 @@ if __name__ == '__main__':
     print('FSE Job Finder')
     while True:
         icao = input('Airport ICAO: ').upper()
-        max_jobs = int(input('Number of jobs to return (0 = all): '))
-        if max_jobs == 0:
-            max_jobs = 99
+        
+        try:
+            max_jobs = int(input('Number of jobs to return (0 = all): '))
+            if max_jobs == 0:
+                max_jobs = 99
+        except:
+            max_jobs = 10
+
         jobs = get_jobs(icao, max_jobs)
+
         for job in jobs:
             print(job)

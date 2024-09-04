@@ -1,7 +1,7 @@
 import airport
 
 NUM_JOBS = 10    # Limit the amount of destinations returned per airport.
-NUM_ROUTES = 5   # Limit the number of routes searched. After each iteration, prune down to the top X most profitable routes
+NUM_ROUTES = 3   # Limit the number of routes searched. After each iteration, prune down to the top X most profitable routes
 
 class Route():
     """
@@ -35,7 +35,7 @@ class Route():
     def print_route(self):
         for cp in self.cps:
             print(cp)
-        print('-'*80)
+        print('-'*70)
         print(self)
 
     def __repr__(self):
@@ -102,10 +102,7 @@ def get_route(start_icao, num_steps, max_jobs, max_routes, allow_reverse):
     if steps < num_steps:
         routes = advance_route(routes, max_jobs, max_routes, steps, num_steps, allow_reverse)
     
-    # Print the final routes.
-    for route in routes:
-        route.print_route()
-
+    return routes
     
 if __name__ == '__main__':
     print('FSE Route Finder')
@@ -119,4 +116,8 @@ if __name__ == '__main__':
         allow_reverse = rev.upper().startswith('Y')
     except:
         allow_reverse = True
-    get_route(icao, legs, NUM_JOBS, NUM_ROUTES, allow_reverse)
+
+    print('')
+    routes = get_route(icao, legs, NUM_JOBS, NUM_ROUTES, allow_reverse)
+    for route in routes:
+        route.print_route()
