@@ -95,14 +95,7 @@ class Route():
         self.dollars_per_nm = self.value / self.length
 
 
-class Airport():
-    def __init__(self, icao = str, name = str, lat = float, long = float, alt = int, rwy_length = int):
-        self.icao = icao
-        self.name = name
-        self.lat = lat
-        self.long = long
-        self.alt = alt
-        self.rwy_length = rwy_length
+
 
 
 def load_apt(filename = 'icaodata.pkl'):
