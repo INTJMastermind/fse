@@ -3,7 +3,6 @@ import airport
 NUM_JOBS = 10    # Limit the amount of destinations returned per airport.
 NUM_ROUTES = 5   # Limit the number of routes searched. After each iteration, prune down to the top X most profitable routes
 
-
 class Route():
     """
     A Route object contains a list of CityPair objects, representing
@@ -37,10 +36,13 @@ class Route():
         for cp in self.cps:
             print(cp)
         print('-'*80)
-        print(f'{self.num_legs} LEG TOTAL:\t${self.value}\t{self.length} nm\t${int(self.dollars_per_nm)}/nm\n')
+        print(self)
 
     def __repr__(self):
         return f'{self.num_legs}-Leg Route: {self.cps[0].origin}-{self.cps[-1].destination}'
+    
+    def __str__(self):
+        return f'{self.num_legs} LEG TOTAL:\t${self.value}\t{self.length} nm\t${int(self.dollars_per_nm)}/nm\n'
 
 
 def advance_route(routes, max_jobs, max_routes, step, num_steps, allow_reverse):
