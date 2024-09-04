@@ -22,6 +22,7 @@ class Route():
             self.cps = [city_pairs]
 
         self.legs = {cp.leg for cp in self.cps}
+        self.num_legs = len(self.cps)
 
         # Total value of jobs along the route
         self.value = sum([cp.total_value for cp in self.cps])
@@ -36,7 +37,10 @@ class Route():
         for cp in self.cps:
             print(cp)
         print('-'*80)
-        print(f'{len(self.legs)} LEG TOTAL:\t${self.value}\t{self.length} nm\t${int(self.dollars_per_nm)}/nm\n')
+        print(f'{self.num_legs} LEG TOTAL:\t${self.value}\t{self.length} nm\t${int(self.dollars_per_nm)}/nm\n')
+
+    def __repr__(self):
+        return f'{self.num_legs}-Leg Route: {self.cps[0].origin}-{self.cps[-1].destination}'
 
 
 def advance_route(routes, max_jobs, max_routes, step, num_steps, allow_reverse):
@@ -47,7 +51,7 @@ def advance_route(routes, max_jobs, max_routes, step, num_steps, allow_reverse):
     for old_route in routes:
         # 1. Check the jobs from the end of the route.
         last_icao = old_route.cps[-1].destination
-        cps = get_jobs(last_icao, max_jobs)
+        cps = airport.get_jobs(last_icao, max_jobs)
         
         # 2. Make new routes from the old route.
         for cp in cps:
@@ -72,6 +76,7 @@ def advance_route(routes, max_jobs, max_routes, step, num_steps, allow_reverse):
     
     return new_routes
 
+
 def sort_routes(routes, max_routes):
     # Sort new routes by $/nm:
     routes = sorted(routes, key=lambda x: x.dollars_per_nm, reverse=True)
@@ -82,7 +87,7 @@ def sort_routes(routes, max_routes):
 
 def get_route(start_icao, num_steps, max_jobs, max_routes, allow_reverse):
     # Get the CityPairs starting from the first airport
-    cps = get_jobs(start_icao, max_jobs)
+    cps = airport.get_jobs(start_icao, max_jobs)
 
     # Create a list of routes. At this point, each route only has one CityPair.
     routes = [Route(cp) for cp in cps]
@@ -97,13 +102,19 @@ def get_route(start_icao, num_steps, max_jobs, max_routes, allow_reverse):
     
     # Print the final routes.
     for route in routes:
-        route.print_route
+        route.print_route()
 
     
 if __name__ == '__main__':
     print('FSE Route Finder')
     icao = input('Starting airport: ').upper()
-    legs = int(input('Number of Legs: '))
-    rev = input('Allow reverse legs (out-and-back trips)? (Y/N): ')
-    allow_reverse = rev.upper().startswith('Y')
+    try:
+        legs = int(input('Number of Legs: '))
+    except:
+        legs = 1
+    try:
+        rev = input('Allow reverse legs (out-and-back trips)? (Y/N): ')
+        allow_reverse = rev.upper().startswith('Y')
+    except:
+        allow_reverse = True
     get_route(icao, legs, NUM_JOBS, NUM_ROUTES, allow_reverse)

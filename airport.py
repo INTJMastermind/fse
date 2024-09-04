@@ -1,10 +1,10 @@
 """
 Finds and returns the optimal routes from a particular airport (ICAO code)
 """
-import pickle
 import os
 import time
 import requests
+from math import sin, cos, sqrt, atan2, radians
 from bs4 import BeautifulSoup
 
 USE_LOCAL = True # Download a local copy to save on key requests
@@ -16,6 +16,7 @@ try:
 except:
     print("ERROR: key.txt not found!")
 
+global fse
 fse = requests.Session()
 
 class CityPair:
@@ -91,6 +92,9 @@ class CityPair:
 
     def __str__(self):
         return f'{self.origin}-{self.destination}\t${self.total_value}\t{self.length} nm\t${int(self.dollars_per_nm)}/nm\t{self.total_jobs} jobs\t{self.pax} pax\t{self.cargo} kg\t{self.vips} VIPs'
+    
+    def __repr__(self):
+        return f'CityPair: {self.origin}-{self.destination}'
 
 
 class Airport():
@@ -107,20 +111,11 @@ class Airport():
         self.lat = lat
         self.long = long
 
+    def __repr__(self):
+        return f'Airport: {self.icao}'
 
-def load_apt(filename = 'icaodata.pkl'):
-    """
-    Loads the icaodata.pkl file, which contains a dictionary with key being the ICAO code, and 
-    value containing an Airport object.
-    """
-    if not os.path.exists(filename):
-        return load_apt_csv()
-    else:
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
-    
-    
-def load_apt_csv(filename = 'icaodata.csv', outname = 'icaodata.pkl'):
+
+def load_apt(filename = 'icaodata.csv'):
     with open(filename) as f:
         lines = f.readlines()
 
@@ -130,13 +125,9 @@ def load_apt_csv(filename = 'icaodata.csv', outname = 'icaodata.pkl'):
         icao = data[0]
         lat = float(data[1])
         long = float(data[2])
-        alt = int(data[4])
         name = data[5]
 
-        apt[data[0]] = Airport(icao, name, lat, long, alt, 0)
-
-    with open(outname, 'wb') as f:
-        pickle.dump(apt, f)
+        apt[data[0]] = Airport(icao, name, lat, long)
 
     return apt
 
@@ -144,8 +135,7 @@ def find_range(ICAO1, ICAO2):
     """
     Returns the range in nautical miles between two airports given their ICAO codes.
     """
-    from math import sin, cos, sqrt, atan2, radians
-
+    
     if ICAO1 not in apt or ICAO2 not in apt:
         return 100
 
@@ -264,13 +254,13 @@ def is_stale(filename, period = 3600):
     Returns whether a file (filename) is older than a set duration (period) in seconds. Default is 1 hour.
     """
     last_modified = time.time()-os.stat(filename).st_mtime # Time in seconds since the file was last modified
-    return last_modified < period
+    return last_modified > period
 
 
 if __name__ == '__main__':
     print('FSE Job Finder')
     while True:
-        icao = input('Starting airport: ').upper()
+        icao = input('Airport ICAO: ').upper()
         max_jobs = int(input('Number of jobs to return (0 = all): '))
         if max_jobs == 0:
             max_jobs = 99
